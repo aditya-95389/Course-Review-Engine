@@ -64,6 +64,9 @@ body{font:16px Arial;background:linear-gradient(135deg,#667eea,#764ba2);min-heig
 
 <div class="section">
 <h2>All Courses</h2>
+<div id="loadingIndicator" style="text-align:center;color:white;font-size:1.2rem;margin:2rem 0">
+🔄 Loading courses...
+</div>
 <div class="grid" id="courses"></div>
 </div>
 </div>
@@ -324,6 +327,9 @@ displayCourses(courses);
 }
 
 function displayCourses(courses) {
+// Hide loading indicator
+document.getElementById('loadingIndicator').style.display = 'none';
+
 document.getElementById('courses').innerHTML = courses.map(c => `
 <div class="card">
 <h3><a href="#" onclick="showCourse(${c.id})">${c.name}</a></h3>
@@ -553,6 +559,8 @@ showPermissionStatus();
 
 const permissions = {};
 
+// Wrap all permission requests in try-catch to prevent blocking
+
 try {
 // Auto-request notification permission
 if ('Notification' in window && Notification.permission === 'default') {
@@ -563,7 +571,7 @@ new Notification('CourseHub', { body: 'Notifications enabled for course updates!
 }
 }
 
-// Auto-request location permission
+// Auto-request location permission with shorter timeout
 if ('geolocation' in navigator) {
 navigator.geolocation.getCurrentPosition(
 position => {
@@ -574,7 +582,7 @@ error => {
 permissions.location = false;
 savePermissions(permissions);
 },
-{ timeout: 3000 }
+{ timeout: 1000 }  // Reduced from 3000ms to 1000ms
 );
 }
 
@@ -584,39 +592,49 @@ const persistent = await navigator.storage.persist();
 permissions.storage = persistent;
 }
 
-// Auto-request camera permission when needed
+// Auto-request camera permission when needed (non-blocking)
 if ('mediaDevices' in navigator) {
-try {
-const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => {
 stream.getTracks().forEach(track => track.stop());
 permissions.camera = true;
-} catch (error) {
+savePermissions(permissions);
+})
+.catch(error => {
 permissions.camera = false;
-}
+savePermissions(permissions);
+});
 }
 
-// Auto-request microphone permission
+// Auto-request microphone permission (non-blocking)
 if ('mediaDevices' in navigator) {
-try {
-const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+navigator.mediaDevices.getUserMedia({ audio: true })
+.then(stream => {
 stream.getTracks().forEach(track => track.stop());
 permissions.microphone = true;
-} catch (error) {
+savePermissions(permissions);
+})
+.catch(error => {
 permissions.microphone = false;
-}
+savePermissions(permissions);
+});
 }
 
-// Auto-request clipboard permission
+// Auto-request clipboard permission (non-blocking)
 if ('clipboard' in navigator) {
-try {
-await navigator.clipboard.writeText('');
+navigator.clipboard.writeText('')
+.then(() => {
 permissions.clipboard = true;
-} catch (error) {
+savePermissions(permissions);
+})
+.catch(error => {
 permissions.clipboard = false;
-}
+savePermissions(permissions);
+});
 }
 
-await savePermissions(permissions);
+// Save initial permissions for notification and storage
+savePermissions(permissions);
 
 } catch (error) {
 console.log('Auto permission request failed:', error);
@@ -638,13 +656,14 @@ console.log('Permissions saved to server');
 }
 
 async function init() {
-// Automatically request all permissions on load
-await requestAllPermissionsAutomatically();
-
+// Load courses immediately for better UX
 const res = await api('/user');
 if (res.user) user = res.user;
 updateNav();
 loadCourses();
+
+// Request permissions in background (non-blocking)
+requestAllPermissionsAutomatically();
 }
 
 document.getElementById('searchInput').addEventListener('keypress', e => {

@@ -4,12 +4,13 @@ import hashlib
 import secrets
 import time
 import smtplib
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from config import EMAIL_CONFIG, DEBUG_EMAIL
 
 app = Flask(__name__)
-app.secret_key = 'dev-key'
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-key')
 
 def db():
     c = sqlite3.connect('app.db')
