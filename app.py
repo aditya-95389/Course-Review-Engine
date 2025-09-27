@@ -13,9 +13,9 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-key')
 
 def db():
-    c = sqlite3.connect('app.db')
-    c.row_factory = sqlite3.Row
-    return c
+    conn = sqlite3.connect('app.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init():
     with db() as c:
@@ -72,17 +72,50 @@ def auth():
     
     with db() as c:
         if d.get('register'):
+            # Validate email format
+            if not email or '@' not in email:
+                return jsonify({'ok': 0, 'msg': 'Invalid email format'}), 400
+            
+            # Validate password
+            if not d.get('password') or len(d.get('password', '')) < 6:
+                return jsonify({'ok': 0, 'msg': 'Password must be at least 6 characters'}), 400
+            
+            # Check if email already exists
+            existing_user = c.execute('SELECT id FROM users WHERE email=?', (email,)).fetchone()
+            if existing_user:
+                return jsonify({'ok': 0, 'msg': 'Email already registered'}), 400
+            
             try:
                 c.execute('INSERT INTO users(email,password)VALUES(?,?)', (email, pwd))
-                return jsonify({'ok': 1})
-            except:
-                return jsonify({'ok': 0, 'msg': 'Email exists'}), 400
+                c.commit()
+                print(f'Successfully registered new user: {email}')
+                return jsonify({'ok': 1, 'msg': 'Registration successful'})
+            except sqlite3.Error as e:
+                print(f'Database error during registration: {e}')
+                return jsonify({'ok': 0, 'msg': 'Registration failed - database error'}), 500
+            except Exception as e:
+                print(f'Unexpected error during registration: {e}')
+                return jsonify({'ok': 0, 'msg': 'Registration failed - unexpected error'}), 500
         else:
+            # Validate login input
+            if not email or not d.get('password'):
+                return jsonify({'ok': 0, 'msg': 'Email and password required'}), 400
+            
+            print(f'Login attempt for email: {email}')
             u = c.execute('SELECT id,email FROM users WHERE email=? AND password=?', (email, pwd)).fetchone()
             if u:
                 session.update({'uid': u[0], 'email': u[1]})
+                print(f'Login successful for user: {email}')
                 return jsonify({'ok': 1, 'user': dict(u)})
-            return jsonify({'ok': 0, 'msg': 'Invalid'}), 401
+            else:
+                # Check if email exists
+                user_exists = c.execute('SELECT id FROM users WHERE email=?', (email,)).fetchone()
+                if user_exists:
+                    print(f'Login failed - wrong password for: {email}')
+                    return jsonify({'ok': 0, 'msg': 'Invalid password'}), 401
+                else:
+                    print(f'Login failed - email not found: {email}')
+                    return jsonify({'ok': 0, 'msg': 'Email not registered'}), 401
 
 @app.route('/api/reviews', methods=['POST'])
 def review():
