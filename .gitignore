@@ -1,3 +1,6 @@
 .vercel
 node_modules/
 package-lock.json
+test_registration.py
+__pycache__/
+*.pyc
