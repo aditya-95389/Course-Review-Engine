@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="profile-container">
+    <h2>My Profile</h2>
+    <p class="profile-email">{{ session.email }}</p>
+    
+    <div class="user-reviews">
+        <h3>My Reviews</h3>
+        {% if user_reviews %}
+            {% for review in user_reviews %}
+            <div class="user-review">
+                <h4>{{ review[0] }}</h4>
+                <div class="review-rating">{{ "★" * review[1] }}{{ "☆" * (5 - review[1]) }}</div>
+                <p class="review-text">{{ review[2] }}</p>
+                <span class="review-date">{{ review[3][:10] }}</span>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="no-reviews">You haven't written any reviews yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
