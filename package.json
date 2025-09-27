@@ -1,0 +1,23 @@
+{
+  "name": "course-review-engine",
+  "version": "1.0.0",
+  "description": "Minimal course review platform optimized for maximum efficiency.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aditya-95389/Course-Review-Engine.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/aditya-95389/Course-Review-Engine/issues"
+  },
+  "homepage": "https://github.com/aditya-95389/Course-Review-Engine#readme",
+  "dependencies": {
+    "@vercel/analytics": "^1.5.0"
+  }
+}

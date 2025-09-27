@@ -134,6 +134,12 @@ body{font:16px Arial;background:linear-gradient(135deg,#667eea,#764ba2);min-heig
 </div>
 </div>
 
+<script defer src="https://unpkg.com/@vercel/analytics@1/dist/web/script.js"></script>
+<script>
+// Initialize Vercel Analytics
+window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+
 <script>
 let user = null;
 let allCourses = [];
@@ -212,10 +218,15 @@ updateNav();
 closeModal();
 msg('Login successful!');
 
+// Track login event
+if (window.va) window.va('track', 'Login', { method: 'email' });
+
 // Automatically request additional permissions after login
 await requestAllPermissionsAutomatically();
 } else {
 msg(res.msg || 'Login failed');
+// Track failed login
+if (window.va) window.va('track', 'Login Failed');
 }
 }
 
@@ -260,9 +271,13 @@ register: true
 });
 if (res.ok) {
 msg('Registration successful! Please login.');
+// Track successful registration
+if (window.va) window.va('track', 'Registration', { method: 'email' });
 switchModal('login');
 } else {
 msg(res.msg || 'Registration failed');
+// Track failed registration
+if (window.va) window.va('track', 'Registration Failed');
 }
 }
 
@@ -342,6 +357,8 @@ document.getElementById('courses').innerHTML = courses.map(c => `
 
 async function search() {
 const q = document.getElementById('searchInput').value;
+// Track search event
+if (q && window.va) window.va('track', 'Search', { query: q });
 const courses = q ? await api('/courses?search=' + encodeURIComponent(q)) : allCourses;
 displayCourses(courses);
 }
@@ -424,6 +441,9 @@ ${data.current_user_id === r.user_id ? `
 `).join('') : '<p style="color:#666;font-style:italic">No reviews yet. Be the first!</p>'}
 `;
 
+// Track course view
+if (window.va) window.va('track', 'Course View', { courseId: id, courseName: course.name });
+
 showModal('course');
 }
 
@@ -444,9 +464,13 @@ text: text
 
 if (res.ok) {
 msg('Review submitted!');
+// Track review submission
+if (window.va) window.va('track', 'Review Submitted', { courseId: courseId, rating: parseInt(rating) });
 showCourse(courseId);
 } else {
 msg('Failed to submit review');
+// Track failed review
+if (window.va) window.va('track', 'Review Submission Failed');
 }
 }
 
