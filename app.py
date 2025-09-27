@@ -294,17 +294,6 @@ def reset_password():
         print(f'Password reset successful for {reset[0]}')
         return jsonify({'ok': 1, 'msg': 'Password reset successful'})
 
-@app.route('/api/permissions', methods=['POST'])
-def save_permissions():
-    if 'uid' not in session:
-        return jsonify({'error': 'Login required'}), 401
-    
-    d = request.json
-    permissions = d.get('permissions', {})
-    session['permissions'] = permissions
-    
-    print(f'User {session["email"]} granted permissions: {permissions}')
-    return jsonify({'ok': 1, 'msg': 'Permissions saved'})
 
 @app.route('/api/debug/tokens')
 def debug_tokens():
@@ -318,8 +307,7 @@ def user():
     if 'uid' in session:
         user_data = {
             'id': session.get('uid'), 
-            'email': session.get('email'),
-            'permissions': session.get('permissions', {})
+            'email': session.get('email')
         }
     return jsonify({'user': user_data})
 

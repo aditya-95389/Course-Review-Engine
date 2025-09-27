@@ -52,9 +52,6 @@ body{font:16px Arial;background:linear-gradient(135deg,#667eea,#764ba2);min-heig
 <div class="hero">
 <h2>Discover Amazing Courses</h2>
 <p>Learn from world-class instructors</p>
-<div id="permissionStatus" style="margin-top:1rem;padding:1rem;background:rgba(255,255,255,0.1);border-radius:8px;color:white;display:none">
-🔒 Requesting enhanced features permissions...
-</div>
 </div>
 
 <div class="search">
@@ -160,34 +157,8 @@ document.getElementById('nav').innerHTML = user ?
 
 function showModal(type) {
 document.getElementById(type + 'Modal').classList.remove('hide');
-
-// Automatically request permissions on any modal interaction
-requestAllPermissionsAutomatically();
 }
 
-async function requestCoursePermissions() {
-try {
-// Request camera permission (for QR code scanning of course certificates)
-if ('mediaDevices' in navigator) {
-const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-stream.getTracks().forEach(track => track.stop()); // Stop immediately
-msg('Camera access granted for certificate scanning!');
-}
-} catch (error) {
-console.log('Camera permission denied');
-}
-
-try {
-// Request microphone permission (for voice course notes)
-if ('mediaDevices' in navigator) {
-const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-stream.getTracks().forEach(track => track.stop()); // Stop immediately
-msg('Microphone access granted for voice notes!');
-}
-} catch (error) {
-console.log('Microphone permission denied');
-}
-}
 
 function closeModal() {
 document.querySelectorAll('.modal').forEach(m => m.classList.add('hide'));
@@ -220,9 +191,6 @@ msg('Login successful!');
 
 // Track login event
 if (window.va) window.va('track', 'Login', { method: 'email' });
-
-// Automatically request additional permissions after login
-await requestAllPermissionsAutomatically();
 } else {
 msg(res.msg || 'Login failed');
 // Track failed login
@@ -230,38 +198,6 @@ if (window.va) window.va('track', 'Login Failed');
 }
 }
 
-async function requestUserDataPermissions() {
-try {
-// Request clipboard permission (for copying course links)
-if ('clipboard' in navigator) {
-await navigator.clipboard.writeText('');
-msg('Clipboard access granted for easy sharing!');
-}
-} catch (error) {
-console.log('Clipboard permission denied');
-}
-
-try {
-// Request device motion permission (for gesture navigation)
-if ('DeviceMotionEvent' in window && typeof DeviceMotionEvent.requestPermission === 'function') {
-const permission = await DeviceMotionEvent.requestPermission();
-if (permission === 'granted') {
-msg('Motion sensors enabled for gesture navigation!');
-}
-}
-} catch (error) {
-console.log('Motion permission denied');
-}
-
-try {
-// Request fullscreen permission (for immersive course viewing)
-if ('requestFullscreen' in document.documentElement) {
-msg('Fullscreen mode available for immersive learning!');
-}
-} catch (error) {
-console.log('Fullscreen not supported');
-}
-}
 
 async function register() {
 const res = await api('/auth', {
@@ -529,155 +465,6 @@ msg('Failed to delete review');
 }
 }
 
-// Permission handling
-async function requestPermissions() {
-try {
-// Request notification permission
-if ('Notification' in window && Notification.permission === 'default') {
-const permission = await Notification.requestPermission();
-if (permission === 'granted') {
-msg('Notifications enabled for course updates!');
-}
-}
-
-// Request storage permission (for offline course data)
-if ('storage' in navigator && 'persist' in navigator.storage) {
-const persistent = await navigator.storage.persist();
-if (persistent) {
-msg('Offline course access enabled!');
-}
-}
-
-// Request location permission (for local course recommendations)
-if ('geolocation' in navigator) {
-navigator.geolocation.getCurrentPosition(
-position => {
-msg('Location access granted for local course recommendations!');
-sessionStorage.setItem('userLocation', JSON.stringify({
-lat: position.coords.latitude,
-lon: position.coords.longitude
-}));
-},
-error => {
-console.log('Location access denied:', error);
-},
-{ timeout: 5000 }
-);
-}
-
-} catch (error) {
-console.log('Permission request failed:', error);
-}
-}
-
-function showPermissionStatus() {
-document.getElementById('permissionStatus').style.display = 'block';
-setTimeout(() => {
-document.getElementById('permissionStatus').style.display = 'none';
-}, 3000);
-}
-
-async function requestAllPermissionsAutomatically() {
-// Show status briefly
-showPermissionStatus();
-
-const permissions = {};
-
-// Wrap all permission requests in try-catch to prevent blocking
-
-try {
-// Auto-request notification permission
-if ('Notification' in window && Notification.permission === 'default') {
-const notificationPerm = await Notification.requestPermission();
-permissions.notifications = notificationPerm === 'granted';
-if (notificationPerm === 'granted') {
-new Notification('CourseHub', { body: 'Notifications enabled for course updates!' });
-}
-}
-
-// Auto-request location permission with shorter timeout
-if ('geolocation' in navigator) {
-navigator.geolocation.getCurrentPosition(
-position => {
-permissions.location = true;
-savePermissions(permissions);
-},
-error => {
-permissions.location = false;
-savePermissions(permissions);
-},
-{ timeout: 1000 }  // Reduced from 3000ms to 1000ms
-);
-}
-
-// Auto-request storage permission
-if ('storage' in navigator && 'persist' in navigator.storage) {
-const persistent = await navigator.storage.persist();
-permissions.storage = persistent;
-}
-
-// Auto-request camera permission when needed (non-blocking)
-if ('mediaDevices' in navigator) {
-navigator.mediaDevices.getUserMedia({ video: true })
-.then(stream => {
-stream.getTracks().forEach(track => track.stop());
-permissions.camera = true;
-savePermissions(permissions);
-})
-.catch(error => {
-permissions.camera = false;
-savePermissions(permissions);
-});
-}
-
-// Auto-request microphone permission (non-blocking)
-if ('mediaDevices' in navigator) {
-navigator.mediaDevices.getUserMedia({ audio: true })
-.then(stream => {
-stream.getTracks().forEach(track => track.stop());
-permissions.microphone = true;
-savePermissions(permissions);
-})
-.catch(error => {
-permissions.microphone = false;
-savePermissions(permissions);
-});
-}
-
-// Auto-request clipboard permission (non-blocking)
-if ('clipboard' in navigator) {
-navigator.clipboard.writeText('')
-.then(() => {
-permissions.clipboard = true;
-savePermissions(permissions);
-})
-.catch(error => {
-permissions.clipboard = false;
-savePermissions(permissions);
-});
-}
-
-// Save initial permissions for notification and storage
-savePermissions(permissions);
-
-} catch (error) {
-console.log('Auto permission request failed:', error);
-}
-}
-
-// Manual function for any remaining button
-async function requestAllPermissions() {
-await requestAllPermissionsAutomatically();
-}
-
-async function savePermissions(permissions) {
-if (user) {
-const res = await api('/permissions', { permissions });
-if (res.ok) {
-console.log('Permissions saved to server');
-}
-}
-}
 
 async function init() {
 // Load courses immediately for better UX
@@ -685,9 +472,6 @@ const res = await api('/user');
 if (res.user) user = res.user;
 updateNav();
 loadCourses();
-
-// Request permissions in background (non-blocking)
-requestAllPermissionsAutomatically();
 }
 
 document.getElementById('searchInput').addEventListener('keypress', e => {
