@@ -1,24 +1,85 @@
 """
-Vercel-compatible database module using environment variables and in-memory storage
-Since Vercel functions are stateless, we'll use a combination of:
-1. Environment variables for simple data
-2. External storage APIs (could be added later)
-3. In-memory data structures initialized on startup
+Vercel-compatible database module using JSON file persistence
+Since Vercel functions are stateless, we'll use:
+1. JSON files for data persistence (in /tmp for Vercel)
+2. In-memory caching for performance
+3. Fallback to default data if files don't exist
 """
 
 import json
 import os
 import hashlib
 from typing import Dict, List, Optional, Any
+import tempfile
 
 class VercelDB:
     def __init__(self):
+        # Set up file paths for persistence
+        self.data_dir = '/tmp' if os.path.exists('/tmp') else tempfile.gettempdir()
+        self.users_file = os.path.join(self.data_dir, 'coursehub_users.json')
+        self.reviews_file = os.path.join(self.data_dir, 'coursehub_reviews.json')
+        self.reset_tokens_file = os.path.join(self.data_dir, 'coursehub_tokens.json')
+        
         # Initialize in-memory storage
         self.users = {}
         self.courses = {}
         self.reviews = {}
         self.reset_tokens = {}
+        
+        # Load data from files or initialize defaults
+        self._load_data()
         self._init_sample_data()
+    
+    def _load_data(self):
+        """Load data from JSON files"""
+        try:
+            if os.path.exists(self.users_file):
+                with open(self.users_file, 'r') as f:
+                    self.users = json.load(f)
+                print(f"Loaded {len(self.users)} users from file")
+        except Exception as e:
+            print(f"Error loading users: {e}")
+            
+        try:
+            if os.path.exists(self.reviews_file):
+                with open(self.reviews_file, 'r') as f:
+                    reviews_list = json.load(f)
+                    self.reviews = {int(k): v for k, v in reviews_list.items()}
+                print(f"Loaded {len(self.reviews)} reviews from file")
+        except Exception as e:
+            print(f"Error loading reviews: {e}")
+            
+        try:
+            if os.path.exists(self.reset_tokens_file):
+                with open(self.reset_tokens_file, 'r') as f:
+                    self.reset_tokens = json.load(f)
+                print(f"Loaded {len(self.reset_tokens)} reset tokens from file")
+        except Exception as e:
+            print(f"Error loading reset tokens: {e}")
+    
+    def _save_users(self):
+        """Save users to JSON file"""
+        try:
+            with open(self.users_file, 'w') as f:
+                json.dump(self.users, f)
+        except Exception as e:
+            print(f"Error saving users: {e}")
+    
+    def _save_reviews(self):
+        """Save reviews to JSON file"""
+        try:
+            with open(self.reviews_file, 'w') as f:
+                json.dump(self.reviews, f)
+        except Exception as e:
+            print(f"Error saving reviews: {e}")
+    
+    def _save_reset_tokens(self):
+        """Save reset tokens to JSON file"""
+        try:
+            with open(self.reset_tokens_file, 'w') as f:
+                json.dump(self.reset_tokens, f)
+        except Exception as e:
+            print(f"Error saving reset tokens: {e}")
     
     def _init_sample_data(self):
         """Initialize with sample course data"""
@@ -71,7 +132,10 @@ class VercelDB:
     
     def get_user_by_email(self, email: str) -> Optional[Dict]:
         """Get user by email"""
-        return self.users.get(email)
+        user = self.users.get(email)
+        print(f"Looking for user {email}: {'Found' if user else 'Not found'}")
+        print(f"Current users in database: {list(self.users.keys())}")
+        return user
     
     def get_user_by_id(self, user_id: int) -> Optional[Dict]:
         """Get user by ID"""
@@ -95,6 +159,8 @@ class VercelDB:
         }
         
         self.users[email] = user
+        self._save_users()  # Persist to file
+        print(f"Created and saved user: {email}")
         return user
     
     def get_all_courses(self) -> List[Dict]:
@@ -176,6 +242,7 @@ class VercelDB:
         }
         
         self.reviews[new_id] = review
+        self._save_reviews()  # Persist to file
         return review
     
     def update_review(self, review_id: int, rating: int, text: str, user_id: int) -> bool:
@@ -184,6 +251,7 @@ class VercelDB:
         if review and review['user_id'] == user_id:
             review['rating'] = rating
             review['text'] = text
+            self._save_reviews()  # Persist to file
             return True
         return False
     
@@ -192,6 +260,7 @@ class VercelDB:
         review = self.reviews.get(review_id)
         if review and review['user_id'] == user_id:
             del self.reviews[review_id]
+            self._save_reviews()  # Persist to file
             return True
         return False
     
@@ -201,6 +270,7 @@ class VercelDB:
             'email': email,
             'expires': expires
         }
+        self._save_reset_tokens()  # Persist to file
     
     def get_reset_token(self, token: str) -> Optional[Dict]:
         """Get reset token data"""
@@ -210,11 +280,13 @@ class VercelDB:
         """Delete reset token"""
         if token in self.reset_tokens:
             del self.reset_tokens[token]
+            self._save_reset_tokens()  # Persist to file
     
     def update_user_password(self, email: str, password_hash: str) -> bool:
         """Update user password"""
         if email in self.users:
             self.users[email]['password'] = password_hash
+            self._save_users()  # Persist to file
             return True
         return False
 
