@@ -4,3 +4,6 @@ package-lock.json
 test_registration.py
 __pycache__/
 *.pyc
+*.db
+app.db
+.env
