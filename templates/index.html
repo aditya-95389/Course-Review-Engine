@@ -140,6 +140,7 @@ window.va = window.va || function () { (window.vaq = window.vaq || []).push(argu
 <script>
 let user = null;
 let allCourses = [];
+let currentCourseId = null;
 
 function msg(text) {
 const div = document.createElement('div');
@@ -300,6 +301,7 @@ displayCourses(courses);
 }
 
 async function showCourse(id) {
+currentCourseId = id;
 console.log('Loading course:', id);
 const data = await api('/courses/' + id);
 console.log('Course data received:', data);
@@ -445,8 +447,7 @@ body: JSON.stringify({rating: parseInt(rating), text: text})
 const result = await res.json();
 if (result.ok) {
 msg('Review updated!');
-const courseId = new URLSearchParams(window.location.search).get('course') || 1;
-showCourse(courseId);
+showCourse(currentCourseId);
 } else {
 msg('Failed to update review');
 }
